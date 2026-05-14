@@ -1,0 +1,129 @@
+#!/bin/sh
+# Minimal bookmark manager for directories
+
+cdpath_dir="${XDG_CONFIG_HOME:-$HOME/.config}/cdpath"
+mkdir -p -- "$cdpath_dir"
+
+case "$0" in
+*sh)
+	case ":${CDPATH-}:" in
+	*":$cdpath_dir:"*) ;;
+	*) CDPATH="$cdpath_dir:${CDPATH-}" ;;
+	esac
+	cd() {
+		command cd -P "$@" >/dev/null
+	}
+	_bm_names() {
+		local f
+		for f in "$cdpath_dir"/*; do
+			[ -e "$f" ] || [ -L "$f" ] || continue
+			printf '%s\n' "${f##*/}"
+		done
+	}
+	if [ -n "${ZSH_VERSION-}" ]; then
+		eval '
+			_bm_zsh() {
+				local -a names
+				names=( $(_bm_names) )
+				case "$words[2]" in
+				-d | --delete) compadd -- "${names[@]}" ;;
+				-*) ;;
+				*) compadd -- "${names[@]}" ;;
+				esac
+			}
+			(( $+functions[compdef] )) && compdef _bm_zsh bm
+		'
+	elif [ -n "${BASH_VERSION-}" ]; then
+		eval '
+			_bm_bash() {
+				local -a names
+				mapfile -t names < <(_bm_names)
+				case "${COMP_WORDS[1]}" in
+				-d | --delete | *)
+					COMPREPLY=( $(compgen -W "${names[*]}" -- "${COMP_WORDS[COMP_CWORD]}") )
+					;;
+				esac
+			}
+			complete -F _bm_bash bm
+		'
+	fi
+	return 0 2>/dev/null || true
+	;;
+esac
+
+set -eu
+
+usage() {
+	cat <<-EOF
+	Usage:
+	  bm                        List all bookmarks
+	  bm <name> [path]          Set bookmark <name> for path (default: current directory)
+	  bm -d, --delete <name>    Delete bookmark <name>
+	  bm -h, --help             Show this help
+	  . bm                      Enable: cd <bookmark>
+	EOF
+	exit 1
+}
+
+list_bookmarks() {
+	local max=0 pad link name len abs
+	for link in "$cdpath_dir"/*; do
+		[ -e "$link" ] || [ -L "$link" ] || continue
+		name="${link##*/}"
+		len="${#name}"
+		[ "$len" -gt "$max" ] && max="$len"
+	done
+	pad=$(( max + 2 ))
+	for link in "$cdpath_dir"/*; do
+		[ -e "$link" ] || [ -L "$link" ] || continue
+		name="${link##*/}"
+		abs=$(readlink -f -- "$link" 2>/dev/null || printf '???')
+		printf "%-${pad}s%s\n" "$name" "$abs"
+	done
+}
+
+set_bookmark() {
+	local name="$1" target dest
+	case "$name" in
+	*/*) echo "E64: name must not contain '/'" >/dev/stderr; exit 64 ;;
+	-*)  echo "E64: name must not start with '-'" >/dev/stderr; exit 64 ;;
+	esac
+	if [ "$#" -ge 2 ]; then
+		target=$(readlink -f -- "$2" 2>/dev/null) || { echo "E64: path not found: $2" >/dev/stderr; exit 64; }
+		[ -d "$target" ] || { echo "E64: not a directory: $target" >/dev/stderr; exit 64; }
+	else
+		target="$PWD"
+	fi
+	dest="$cdpath_dir/$name"
+	if [ -e "$dest" ] || [ -L "$dest" ]; then
+		rm -f -- "$dest"
+	fi
+	ln -sf -- "$target" "$dest"
+}
+
+delete_bookmark() {
+	local name="$1" dest
+	dest="$cdpath_dir/$name"
+	if [ -e "$dest" ] || [ -L "$dest" ]; then
+		rm -f -- "$dest"
+	fi
+}
+
+if [ "$#" -eq 0 ]; then
+	list_bookmarks
+	exit 0
+fi
+
+case "$1" in
+-h | --help)
+	usage
+	;;
+-d | --delete)
+	[ "$#" -eq 2 ] || usage
+	delete_bookmark "$2"
+	;;
+*)
+	[ "$#" -le 2 ] || usage
+	set_bookmark "$@"
+	;;
+esac
