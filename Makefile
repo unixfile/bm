@@ -2,7 +2,6 @@ NAME    := bm
 VERSION := $(shell cat VERSION)
 PREFIX  ?= $(HOME)/.local
 BINDIR   = $(PREFIX)/bin
-MANDIR   = $(PREFIX)/share/man/man1
 
 .PHONY: install man bump test clean
 

@@ -12,6 +12,13 @@ cd bm
 make install
 ```
 
+For the man page (requires pandoc):
+
+```sh
+make man
+man ./bm.1
+```
+
 ## Usage
 
 ```
