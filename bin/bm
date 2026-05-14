@@ -23,12 +23,8 @@ case "$0" in
 	if [ -n "${ZSH_VERSION-}" ]; then
 		eval '
 			_bm_zsh() {
-				local -a names
-				names=( $(_bm_names) )
 				case "$words[2]" in
-				-d | --delete) compadd -- "${names[@]}" ;;
-				-*) ;;
-				*) compadd -- "${names[@]}" ;;
+				-d | --delete) compadd -- $(_bm_names) ;;
 				esac
 			}
 			(( $+functions[compdef] )) && compdef _bm_zsh bm
@@ -36,10 +32,10 @@ case "$0" in
 	elif [ -n "${BASH_VERSION-}" ]; then
 		eval '
 			_bm_bash() {
-				local -a names
-				mapfile -t names < <(_bm_names)
 				case "${COMP_WORDS[1]}" in
-				-d | --delete | *)
+				-d | --delete)
+					local -a names
+					mapfile -t names < <(_bm_names)
 					COMPREPLY=( $(compgen -W "${names[*]}" -- "${COMP_WORDS[COMP_CWORD]}") )
 					;;
 				esac
