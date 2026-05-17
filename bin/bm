@@ -1,6 +1,8 @@
 #!/bin/sh
 # Minimal bookmark manager for directories
 
+VERSION=1
+
 cdpath_dir="${XDG_CONFIG_HOME:-$HOME/.config}/cdpath"
 mkdir -p -- "$cdpath_dir"
 
@@ -113,6 +115,10 @@ fi
 case "$1" in
 -h | --help)
 	usage
+	;;
+-V | --version)
+	printf '%s\n' "$VERSION"
+	exit 0
 	;;
 -d | --delete)
 	[ "$#" -eq 2 ] || usage

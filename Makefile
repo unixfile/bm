@@ -1,9 +1,8 @@
-NAME    := bm
-VERSION := $(shell cat VERSION)
-PREFIX  ?= $(HOME)/.local
-BINDIR   = $(PREFIX)/bin
+NAME   := bm
+PREFIX ?= $(HOME)/.local
+BINDIR  = $(PREFIX)/bin
 
-.PHONY: install man bump test clean
+.PHONY: install man test clean
 
 install:
 	install -Dm755 bin/$(NAME) $(BINDIR)/$(NAME)
@@ -13,9 +12,6 @@ man:
 		-V title=$(NAME) -V section=1 \
 		-V date="$(shell date +%Y-%m-%d)" \
 		-o $(NAME).1
-
-bump:
-	sed -i "s/^VERSION=.*/VERSION=\"$$(cat VERSION)\"/" bin/$(NAME)
 
 test:
 	bats bm.bats
