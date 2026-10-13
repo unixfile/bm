@@ -12,8 +12,17 @@ case "$0" in
 	*":$cdpath_dir:"*) ;;
 	*) CDPATH="$cdpath_dir:${CDPATH-}" ;;
 	esac
+	# Local dirs win over bookmarks and stay logical; bookmark jumps
+	# resolve to the real path
 	cd() {
-		command cd -P "$@" >/dev/null
+		if [ $# -eq 1 ] && [ -d "$1" ]; then
+			case $1 in /*) ;; *) set -- "./$1" ;; esac
+			command cd "$1"
+		elif [ $# -eq 1 ] && [ -e "$cdpath_dir/$1" ]; then
+			command cd -P -- "$cdpath_dir/$1"
+		else
+			command cd "$@"
+		fi >/dev/null
 	}
 	_bm_names() {
 		local f

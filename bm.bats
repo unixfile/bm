@@ -114,3 +114,34 @@ bookmark_target() { readlink -f "$(cdpath_dir)/$1"; }
 	run "$BM" a b c
 	[ "$status" -eq 1 ]
 }
+
+# cd wrapper, sourced as `. bm`
+
+bm_sh() { sh -c ". \"$BM\"; $1"; }
+
+@test "cd: bookmark jump resolves to the real path" {
+	mkdir -p "$TMPDIR/proj"
+	ln -s "$TMPDIR/proj" "$(cdpath_dir)/proj"
+	run bm_sh 'cd proj && printf "%s\n" "$PWD"'
+	[ "$status" -eq 0 ]
+	[ "$output" = "$TMPDIR/proj" ]
+}
+
+@test "cd: symlinked dir keeps the logical path" {
+	mkdir -p "$TMPDIR/real" "$TMPDIR/repo"
+	ln -s "$TMPDIR/real" "$TMPDIR/repo/link"
+	cd "$TMPDIR/repo"
+	run bm_sh 'cd link && printf "%s\n" "$PWD" && cd .. && printf "%s\n" "$PWD"'
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "$TMPDIR/repo/link" ]
+	[ "${lines[1]}" = "$TMPDIR/repo" ]
+}
+
+@test "cd: local dir wins over a bookmark of the same name" {
+	mkdir -p "$TMPDIR/elsewhere" "$TMPDIR/here/proj"
+	ln -s "$TMPDIR/elsewhere" "$(cdpath_dir)/proj"
+	cd "$TMPDIR/here"
+	run bm_sh 'cd proj && pwd -P'
+	[ "$status" -eq 0 ]
+	[ "$output" = "$TMPDIR/here/proj" ]
+}
